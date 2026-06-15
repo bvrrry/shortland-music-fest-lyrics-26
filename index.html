@@ -449,7 +449,13 @@ function lineAt(time){
   for(let i=0;i<allRows.length;i++){
     if(allRows[i].tEff <= time+0.01) idx=i; else break;
   }
-  // if that row is a section heading, treat the next real lyric as current
+  // focus one lyric line ahead of the fired cue (skipping headings)
+  if(idx>=0){
+    for(let j=idx+1;j<allRows.length;j++){
+      if(!allRows[j].heading){ idx=j; break; }
+    }
+  }
+  // if the resulting row is itself a section heading, advance to the next real lyric
   if(idx>=0 && allRows[idx] && allRows[idx].heading){
     for(let j=idx+1;j<allRows.length;j++){
       if(!allRows[j].heading){ idx=j; break; }
