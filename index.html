@@ -225,6 +225,78 @@
     .speeds{order:3}
   }
 
+  /* ===== SYNC MODE ===== */
+  .tool-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .ghost-btn{
+    border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink-dim);
+    border-radius:11px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:all .15s;
+  }
+  .ghost-btn:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+  .ghost-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  body.sync .lrow{cursor:pointer}
+  body.sync .lrow:hover{color:var(--ink)}
+  .lrow.tapped::after{
+    content:attr(data-stamp);
+    font-family:"Inter",sans-serif;font-size:12px;font-weight:700;font-style:normal;
+    color:var(--accent);margin-left:12px;letter-spacing:.02em;
+    vertical-align:middle;text-shadow:none;
+  }
+  .lrow.armed{
+    color:#fff;opacity:1;filter:none;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent);
+    background:color-mix(in srgb,var(--accent) 12%,transparent);
+  }
+  .lrow.armed::before{content:"";position:absolute;left:-2px;width:3px;height:1.1em;
+    margin-top:.16em;border-radius:3px;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+
+  /* sync bar — replaces transport hint area when active */
+  .syncbar{
+    display:none;align-items:center;gap:12px;flex-wrap:wrap;
+    background:color-mix(in srgb,var(--accent) 10%,var(--panel));
+    border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));
+    border-radius:13px;padding:11px 14px;margin-top:12px;
+  }
+  body.sync .syncbar{display:flex}
+  .syncbar .pill{
+    font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+    color:var(--accent);
+  }
+  .syncbar .status{font-size:13px;color:var(--ink-dim);flex:1;min-width:140px}
+  .syncbar .status b{color:var(--ink);font-weight:700}
+  .tap-big{
+    border:none;border-radius:11px;cursor:pointer;font-weight:800;font-size:14px;
+    padding:11px 18px;background:var(--accent);color:#160c22;
+    box-shadow:0 4px 16px -4px var(--accent);transition:transform .1s;
+  }
+  .tap-big:active{transform:scale(.97)}
+  .tap-big.sm{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line);box-shadow:none;font-weight:700}
+  .tap-big.sm:hover{border-color:var(--accent)}
+
+  /* export modal */
+  .modal-bg{
+    display:none;position:fixed;inset:0;z-index:90;
+    background:rgba(6,4,12,.72);backdrop-filter:blur(6px);
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-bg.show{display:flex}
+  .modal{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:18px;
+    max-width:680px;width:100%;max-height:84vh;display:flex;flex-direction:column;
+    padding:22px;
+  }
+  .modal h3{font-family:"Georgia",serif;font-size:22px;font-weight:600;margin-bottom:6px}
+  .modal p{color:var(--ink-dim);font-size:13px;line-height:1.55;margin-bottom:14px}
+  .modal textarea{
+    flex:1;min-height:240px;resize:vertical;width:100%;
+    background:#0b0716;border:1px solid var(--line);border-radius:11px;
+    color:#cfe9d6;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;line-height:1.5;
+    padding:14px;white-space:pre;overflow:auto;
+  }
+  .modal-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:flex-end}
+
   .hint{color:var(--ink-faint);font-size:12px;line-height:1.5;margin-top:14px}
   .hint kbd{
     font-family:inherit;background:var(--panel-2);border:1px solid var(--line);
@@ -253,6 +325,12 @@
         </button>
         <div class="sec-label">Or learn one spell</div>
         <div class="sections" id="sectionList"></div>
+        <div class="tool-row">
+          <button class="ghost-btn" id="syncToggle">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            Sync mode
+          </button>
+        </div>
       </div>
     </div>
 
@@ -260,9 +338,29 @@
     <div class="panel stage">
       <div class="nowtag">Now playing · <b id="nowName">—</b></div>
       <div class="lyrics" id="lyrics"></div>
+      <div class="syncbar" id="syncbar">
+        <span class="pill">● Sync</span>
+        <span class="status" id="syncStatus">Press <b>Play</b>, then tap <b>Space</b> as each line begins.</span>
+        <button class="tap-big sm" id="syncRedo">Redo last</button>
+        <button class="tap-big sm" id="syncReset">Clear</button>
+        <button class="tap-big" id="syncExport">Export timings</button>
+      </div>
       <div class="hint">
         <kbd>Space</kbd> play / pause &nbsp;·&nbsp; <kbd>←</kbd> <kbd>→</kbd> skip 5s &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> speed
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Your synced timings</h3>
+    <p>Copy everything below and paste it over the <b>SECTIONS</b> block near the top of <b>index.html</b>'s script (replace the whole <code>const SECTIONS = [ … ];</code>). Re-save, and the tool is permanently synced for everyone you share it with.</p>
+    <textarea id="exportText" readonly spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <button class="tap-big sm" id="modalClose">Close</button>
+      <button class="tap-big" id="modalCopy">Copy to clipboard</button>
     </div>
   </div>
 </div>
@@ -311,89 +409,89 @@ const SONG_DURATION = 242.35;
 const SECTIONS = [
   {
     id:"abracadabra", name:"Abracadabra", color:"var(--c-abra)",
-    start:0.0, end:60.0,
+    start:0.0, end:88.0,
     lines:[
       [0.0,  "§ Abracadabra"],
-      [1.5,  "Abra-ca-dabra"],
-      [3.5,  "Abracadabra"],
-      [5.5,  "Abra-ca-dabra"],
-      [7.5,  "Abracadabra"],
-      [10.0, "Pay the toll to the angels"],
-      [13.0, "Drawing circles in the clouds"],
-      [16.0, "Keep your mind on the distance"],
-      [19.0, "When the devil turns around"],
-      [22.5, "Hold me in your heart tonight"],
-      [25.5, "In the magic of the dark moonlight"],
-      [28.5, "Save me from this empty fight"],
-      [31.5, "In the game of life"],
-      [34.5, "Like a poem said by a lady in red"],
-      [38.0, "You hear the last few words of your life"],
-      [41.5, "With a haunting dance, now you're both in a trance"],
-      [45.0, "It's time to cast your spell on the night"],
-      [48.5, "Abracadabra, amor oo na na"],
-      [51.5, "Abra ca da bra, morta oo gaga"],
-      [54.5, "Abracadabra, abra oo na na"],
-      [57.5, "In her tongue she said: death or love tonight"],
+      [4.0,  "Abra-ca-dabra"],
+      [8.5,  "Abracadabra"],
+      [13.0, "Abra-ca-dabra"],
+      [17.5, "Abracadabra"],
+      [22.0, "Pay the toll to the angels"],
+      [26.0, "Drawing circles in the clouds"],
+      [30.0, "Keep your mind on the distance"],
+      [34.0, "When the devil turns around"],
+      [38.5, "Hold me in your heart tonight"],
+      [42.5, "In the magic of the dark moonlight"],
+      [46.5, "Save me from this empty fight"],
+      [50.5, "In the game of life"],
+      [54.5, "Like a poem said by a lady in red"],
+      [58.5, "You hear the last few words of your life"],
+      [62.5, "With a haunting dance, now you're both in a trance"],
+      [66.5, "It's time to cast your spell on the night"],
+      [70.5, "Abracadabra, amor oo na na"],
+      [74.5, "Abra ca da bra, morta oo gaga"],
+      [78.5, "Abracadabra, abra oo na na"],
+      [82.5, "In her tongue she said: death or love tonight"],
     ]
   },
   {
     id:"disturbia", name:"Disturbia", color:"var(--c-dist)",
-    start:60.0, end:133.0,
+    start:88.0, end:171.0,
     lines:[
-      [60.0,  "§ Disturbia"],
-      [61.5,  "Bum bum be-dum, bum bum be-dum bum"],
-      [65.0,  "Bum bum be-dum, bum bum be-dum bum"],
-      [68.5,  "Bum bum be-dum, bum bum be-dum bum"],
-      [72.0,  "(I'm going crazy now)"],
-      [75.0,  "No more gas, in the red (can't even get it started)"],
-      [79.0,  "Nothing heard, nothing said (can't even speak about it)"],
-      [83.0,  "All my life on my head (don't want to think about it)"],
-      [87.0,  "Feels like I'm going insane, yeah"],
-      [91.0,  "It's a thief in the night to come and grab you (ah-ah)"],
-      [95.0,  "It can creep up inside you and consume you (ah-ah)"],
-      [99.0,  "A disease of the mind, it can control you (ah-ah)"],
-      [103.0, "It's too close for comfort, oh"],
-      [107.0, "Put on your brake lights, you're in the city of wonder"],
-      [111.0, "Ain't gon' play nice, watch out you might just go under"],
-      [115.0, "Better think twice, your train of thought will be altered"],
-      [119.0, "So if you must falter, be wise"],
-      [122.5, "Your mind's in disturbia, it's like the darkness is light"],
-      [126.0, "Disturbia, am I scaring you tonight?"],
-      [129.5, "Disturbia, ain't used to what you like — disturbia"],
+      [88.0,  "§ Disturbia"],
+      [89.5,  "Bum bum be-dum, bum bum be-dum bum"],
+      [93.5,  "Bum bum be-dum, bum bum be-dum bum"],
+      [97.5,  "Bum bum be-dum, bum bum be-dum bum"],
+      [101.5, "(I'm going crazy now)"],
+      [105.0, "No more gas, in the red (can't even get it started)"],
+      [109.5, "Nothing heard, nothing said (can't even speak about it)"],
+      [114.0, "All my life on my head (don't want to think about it)"],
+      [118.5, "Feels like I'm going insane, yeah"],
+      [123.0, "It's a thief in the night to come and grab you (ah-ah)"],
+      [127.5, "It can creep up inside you and consume you (ah-ah)"],
+      [132.0, "A disease of the mind, it can control you (ah-ah)"],
+      [136.5, "It's too close for comfort, oh"],
+      [141.0, "Put on your brake lights, you're in the city of wonder"],
+      [145.5, "Ain't gon' play nice, watch out you might just go under"],
+      [150.0, "Better think twice, your train of thought will be altered"],
+      [154.5, "So if you must falter, be wise"],
+      [158.5, "Your mind's in disturbia, it's like the darkness is light"],
+      [162.5, "Disturbia, am I scaring you tonight?"],
+      [166.5, "Disturbia, ain't used to what you like — disturbia"],
     ]
   },
   {
     id:"blackmagic", name:"Black Magic", color:"var(--c-black)",
-    start:133.0, end:177.0,
+    start:171.0, end:206.0,
     lines:[
-      [133.0, "§ Black Magic"],
-      [134.5, "Get your boy on his knees and repeat after me, say"],
-      [139.0, "Take a sip from my secret potion"],
-      [142.0, "I'll make you fall in love"],
-      [145.0, "For a spell that can't be broken, one drop should be enough"],
-      [149.0, "Boy, you belong to me, I got the recipe"],
-      [153.0, "And it's called black magic"],
-      [157.0, "Take a sip from my secret potion, one taste and you'll be mine"],
-      [161.5, "It's a spell that can't be broken, it'll keep you up all night"],
-      [166.0, "Boy, you belong to me, I got the recipe"],
-      [170.0, "And it's called black magic"],
-      [174.0, "(And it's called black magic)"],
+      [171.0, "§ Black Magic"],
+      [172.5, "Get your boy on his knees and repeat after me, say"],
+      [175.5, "Take a sip from my secret potion"],
+      [178.0, "I'll make you fall in love"],
+      [180.5, "For a spell that can't be broken, one drop should be enough"],
+      [183.5, "Boy, you belong to me, I got the recipe"],
+      [186.5, "And it's called black magic"],
+      [189.5, "Take a sip from my secret potion, one taste and you'll be mine"],
+      [193.5, "It's a spell that can't be broken, it'll keep you up all night"],
+      [197.5, "Boy, you belong to me, I got the recipe"],
+      [201.0, "And it's called black magic"],
+      [204.0, "(And it's called black magic)"],
     ]
   },
   {
     id:"darkhorse", name:"Dark Horse", color:"var(--c-dark)",
-    start:177.0, end:242.35,
+    start:206.0, end:242.35,
     lines:[
-      [177.0, "§ Dark Horse"],
-      [179.0, "So you wanna play with magic?"],
-      [183.0, "Boy, you should know what you're fallin' for"],
-      [188.0, "Baby, do you dare to do this?"],
-      [192.0, "'Cause I'm comin' at you like a dark horse (hey)"],
-      [198.0, "Are you ready for, ready for (hey)"],
-      [203.0, "A perfect storm, perfect storm? (Hey, hey)"],
-      [209.0, "'Cause once you're mine, once you're mine"],
-      [215.0, "(Hey, hey, hey, hey)"],
-      [220.0, "(There's no goin' back)"],
+      [206.0, "§ Dark Horse"],
+      [208.0, "So you wanna play with magic?"],
+      [212.0, "Boy, you should know what you're fallin' for"],
+      [216.0, "Baby, do you dare to do this?"],
+      [220.0, "'Cause I'm comin' at you like a dark horse (hey)"],
+      [225.0, "Are you ready for, ready for (hey)"],
+      [229.0, "A perfect storm, perfect storm? (Hey, hey)"],
+      [233.0, "'Cause once you're mine, once you're mine"],
+      [237.0, "(Hey, hey, hey, hey)"],
+      [240.0, "(There's no goin' back)"],
     ]
   }
 ];
@@ -404,14 +502,20 @@ const lyricsEl = document.getElementById('lyrics');
 const root = document.documentElement;
 
 let activeSection = null;   // null = full mix
-let allRows = [];           // flat [{t,text,heading,el,secIdx}]
+let allRows = [];           // flat [{t,text,heading,el,secIdx,lineIdx}]
 let curIdx = -1;
+
+/* ---- sync mode state ---- */
+let syncOn = false;
+let armedIdx = -1;          // index in allRows of next non-heading line to stamp
+let newStamps = {};         // "secIdx:lineIdx" -> seconds (captured overrides)
 
 const fmt = s => {
   s = Math.max(0, s||0);
   const m = Math.floor(s/60), ss = Math.floor(s%60);
   return m+":"+String(ss).padStart(2,'0');
 };
+const fmt2 = s => (Math.round((s||0)*10)/10).toFixed(1)+'s';  // e.g. 41.5s
 
 /* build the section selector */
 const listEl = document.getElementById('sectionList');
@@ -447,16 +551,29 @@ function renderLyrics(){
   const secs = activeSection===null ? SECTIONS : [SECTIONS[activeSection]];
   secs.forEach((s)=>{
     const secIdx = SECTIONS.indexOf(s);
-    s.lines.forEach(([t,text])=>{
+    s.lines.forEach(([t,text],lineIdx)=>{
       const row=document.createElement('div');
       const heading = text.startsWith('§');
       row.className='lrow'+(heading?' heading':'');
       row.textContent = heading ? text.slice(1).trim() : text;
+      const rec = {t, text, heading, el:row, secIdx, lineIdx};
+      // show any captured stamp
+      const key = secIdx+':'+lineIdx;
+      if(!heading && key in newStamps){
+        row.classList.add('tapped');
+        row.dataset.stamp = fmt2(newStamps[key]);
+      }
+      // click a line to arm it (sync mode)
+      row.addEventListener('click',()=>{
+        if(!syncOn || heading) return;
+        armAt(allRows.indexOf(rec));
+      });
       lyricsEl.appendChild(row);
-      allRows.push({t, text, heading, el:row, secIdx});
+      allRows.push(rec);
     });
   });
   curIdx=-1;
+  if(syncOn) armFirstUnstamped();
 }
 
 /* which lyric line is current for a given time */
@@ -480,6 +597,7 @@ function setAccentForTime(time){
 }
 
 function highlight(time){
+  if(syncOn) return;   // sync mode owns the row classes
   const idx=lineAt(time);
   if(idx!==curIdx){
     allRows.forEach((r,i)=>{
@@ -514,13 +632,13 @@ function playFull(){
   audio.play();
 }
 function playSection(i){
-  activeSection=i;
+  // Jump to a section's start and keep playing through the rest of the mix.
+  // Lyrics stay in full-mix view so the song flows on naturally.
+  activeSection=null;
   renderLyrics();
   const s=SECTIONS[i];
-  if(audio.currentTime < s.start || audio.currentTime >= s.end){
-    audio.currentTime = s.start;
-  }
-  setAccentForTime(audio.currentTime);
+  audio.currentTime = s.start;
+  setAccentForTime(s.start);
   audio.play();
 }
 
@@ -532,7 +650,6 @@ document.getElementById('fwd').addEventListener('click',()=> audio.currentTime=M
 audio.addEventListener('play',()=>setPlayIcon(true));
 audio.addEventListener('pause',()=>setPlayIcon(false));
 
-/* keep a section from bleeding into the next when learning one spell */
 audio.addEventListener('timeupdate',()=>{
   const t=audio.currentTime;
   document.getElementById('cur').textContent=fmt(t);
@@ -540,10 +657,6 @@ audio.addEventListener('timeupdate',()=>{
   document.getElementById('head').style.left=(t/SONG_DURATION*100)+'%';
   setAccentForTime(t);
   highlight(t);
-  if(activeSection!==null){
-    const s=SECTIONS[activeSection];
-    if(t>=s.end){ audio.pause(); audio.currentTime=s.end-0.05; }
-  }
 });
 
 audio.addEventListener('loadedmetadata',()=>{
@@ -572,11 +685,143 @@ function setSpeed(v){
 speeds.forEach(b=>b.addEventListener('click',()=>setSpeed(b.dataset.s)));
 
 /* keyboard */
+/* ====================== SYNC ENGINE ====================== */
+const syncbar = document.getElementById('syncbar');
+const syncStatus = document.getElementById('syncStatus');
+const syncToggle = document.getElementById('syncToggle');
+
+function nonHeadingRows(){ return allRows.filter(r=>!r.heading); }
+
+function armAt(idx){
+  armedIdx = idx;
+  allRows.forEach((r,i)=>r.el.classList.toggle('armed', i===idx));
+  const r=allRows[idx];
+  if(r){
+    r.el.scrollIntoView({block:'center',behavior:'smooth'});
+    const remaining = nonHeadingRows().filter(x=>!( (x.secIdx+':'+x.lineIdx) in newStamps)).length;
+    syncStatus.innerHTML = `Next: <b>${r.text}</b> &nbsp;·&nbsp; ${remaining} line${remaining===1?'':'s'} left to tap`;
+  }
+}
+
+function armFirstUnstamped(){
+  const rows=allRows;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i].heading) continue;
+    const key=rows[i].secIdx+':'+rows[i].lineIdx;
+    if(!(key in newStamps)){ armAt(i); return; }
+  }
+  // all stamped
+  armedIdx=-1;
+  allRows.forEach(r=>r.el.classList.remove('armed'));
+  syncStatus.innerHTML = `All lines captured. Hit <b>Export timings</b>.`;
+}
+
+function tapStamp(){
+  if(armedIdx<0 || !allRows[armedIdx]) return;
+  const r=allRows[armedIdx];
+  const key=r.secIdx+':'+r.lineIdx;
+  newStamps[key] = Math.round(audio.currentTime*100)/100;
+  r.el.classList.remove('armed');
+  r.el.classList.add('tapped');
+  r.el.dataset.stamp = fmt2(newStamps[key]);
+  // arm next non-heading row after this one
+  let next=-1;
+  for(let i=armedIdx+1;i<allRows.length;i++){ if(!allRows[i].heading){ next=i; break; } }
+  if(next>=0) armAt(next); else armFirstUnstamped();
+}
+
+function syncRedoLast(){
+  // find the most recently stamped row before/around armed and clear it, re-arm it
+  let target=-1;
+  const upto = armedIdx<0 ? allRows.length : armedIdx;
+  for(let i=upto-1;i>=0;i--){
+    if(allRows[i].heading) continue;
+    const key=allRows[i].secIdx+':'+allRows[i].lineIdx;
+    if(key in newStamps){ target=i; break; }
+  }
+  if(target<0) return;
+  const r=allRows[target];
+  delete newStamps[r.secIdx+':'+r.lineIdx];
+  r.el.classList.remove('tapped'); delete r.el.dataset.stamp;
+  armAt(target);
+}
+
+function syncReset(){
+  newStamps={};
+  allRows.forEach(r=>{ r.el.classList.remove('tapped','armed'); delete r.el.dataset.stamp; });
+  armFirstUnstamped();
+}
+
+function enterSync(){
+  syncOn=true;
+  document.body.classList.add('sync');
+  syncToggle.style.color='var(--accent)';
+  syncToggle.style.borderColor='var(--accent)';
+  audio.pause();
+  renderLyrics();          // re-render to attach stamp display + arm first
+  armFirstUnstamped();
+}
+function exitSync(){
+  syncOn=false;
+  document.body.classList.remove('sync');
+  syncToggle.style.color='';
+  syncToggle.style.borderColor='';
+  allRows.forEach(r=>r.el.classList.remove('armed'));
+}
+syncToggle.addEventListener('click',()=> syncOn ? exitSync() : enterSync());
+document.getElementById('syncRedo').addEventListener('click',syncRedoLast);
+document.getElementById('syncReset').addEventListener('click',()=>{
+  if(Object.keys(newStamps).length && !confirm('Clear all captured timings for this view?')) return;
+  syncReset();
+});
+
+/* ---- export ---- */
+function buildExport(){
+  // rebuild SECTIONS literal, substituting captured stamps where present
+  const indent='  ';
+  let out='const SECTIONS = [\n';
+  SECTIONS.forEach((s,si)=>{
+    out+=indent+'{\n';
+    out+=indent+'  id:'+JSON.stringify(s.id)+', name:'+JSON.stringify(s.name)+', color:'+JSON.stringify(s.color)+',\n';
+    out+=indent+'  start:'+s.start+', end:'+s.end+',\n';
+    out+=indent+'  lines:[\n';
+    s.lines.forEach(([t,text],li)=>{
+      const key=si+':'+li;
+      const val = (key in newStamps) ? newStamps[key] : t;
+      out+=indent+'    ['+val+', '+JSON.stringify(text)+'],\n';
+    });
+    out+=indent+'  ]\n';
+    out+=indent+'}'+(si<SECTIONS.length-1?',':'')+'\n';
+  });
+  out+='];';
+  return out;
+}
+const modalBg=document.getElementById('modalBg');
+document.getElementById('syncExport').addEventListener('click',()=>{
+  document.getElementById('exportText').value=buildExport();
+  modalBg.classList.add('show');
+});
+document.getElementById('modalClose').addEventListener('click',()=>modalBg.classList.remove('show'));
+modalBg.addEventListener('click',e=>{ if(e.target===modalBg) modalBg.classList.remove('show'); });
+document.getElementById('modalCopy').addEventListener('click',async()=>{
+  const ta=document.getElementById('exportText');
+  ta.select();
+  try{ await navigator.clipboard.writeText(ta.value); }
+  catch(_){ document.execCommand('copy'); }
+  const btn=document.getElementById('modalCopy'); const o=btn.textContent;
+  btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1400);
+});
+
 window.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT') return;
-  if(e.code==='Space'){e.preventDefault(); audio.paused?audio.play():audio.pause();}
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(syncOn){ tapStamp(); return; }    // sync mode: Space stamps the armed line
+    audio.paused?audio.play():audio.pause();
+  }
   else if(e.code==='ArrowLeft') audio.currentTime=Math.max(0,audio.currentTime-5);
   else if(e.code==='ArrowRight') audio.currentTime=Math.min(SONG_DURATION,audio.currentTime+5);
+  else if(e.code==='Escape') modalBg.classList.remove('show');
   else if(['1','2','3','4','5'].includes(e.key)){
     const map={'1':'1','2':'1.25','3':'1.5','4':'1.75','5':'2'};
     setSpeed(map[e.key]);
