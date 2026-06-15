@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Spellbook — Lyric Trainer</title>
+<style>
+  /* ============================================================
+     SPELLBOOK — a karaoke lyric trainer
+     Four songs, four colours, one continuous mix.
+     ============================================================ */
+
+  :root{
+    --bg:#0a0712;
+    --bg-2:#120c20;
+    --ink:#ece7f5;
+    --ink-dim:#7d7596;
+    --ink-faint:#4a4460;
+    --line:#241a38;
+    --panel:#140d24;
+    --panel-2:#1a1230;
+    /* section accents */
+    --c-abra:#b06bff;   /* Abracadabra — violet */
+    --c-dist:#33d6e6;   /* Disturbia — cyan */
+    --c-black:#ff5fb0;  /* Black Magic — magenta */
+    --c-dark:#f5b73d;   /* Dark Horse — gold */
+    --accent:var(--c-abra);
+    --accent-soft:rgba(176,107,255,.16);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1100px 700px at 80% -10%, rgba(176,107,255,.10), transparent 60%),
+      radial-gradient(900px 600px at 0% 110%, rgba(51,214,230,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100dvh;
+    overflow-x:hidden;
+  }
+
+  /* ---- layout shell ---- */
+  .wrap{
+    max-width:1180px;margin:0 auto;
+    padding:clamp(16px,3vw,34px) clamp(14px,3vw,30px) 160px;
+  }
+  header.top{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    margin-bottom:clamp(18px,3vw,30px);
+  }
+  .brand{
+    font-family:"Georgia",serif;
+    font-size:clamp(26px,5vw,44px);
+    font-weight:600;letter-spacing:-.01em;
+    line-height:1;
+    background:linear-gradient(110deg,#fff 10%,var(--c-abra) 45%,var(--c-dist) 75%,var(--c-dark));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{color:var(--ink-dim);font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+
+  .grid{
+    display:grid;gap:clamp(16px,2.4vw,26px);
+    grid-template-columns:1fr;
+  }
+  @media(min-width:880px){
+    .grid{grid-template-columns:360px 1fr;align-items:start}
+  }
+
+  /* ---- panels ---- */
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:clamp(16px,2.2vw,22px);
+  }
+  .panel + .panel{margin-top:18px}
+
+  /* ===== SECTION SELECTOR ===== */
+  .sec-label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:12px}
+  .full-btn{
+    width:100%;border:none;cursor:pointer;
+    border-radius:14px;padding:16px 18px;margin-bottom:14px;
+    background:linear-gradient(110deg,var(--c-abra),var(--c-black) 55%,var(--c-dark));
+    color:#1a0e25;font-weight:800;font-size:16px;letter-spacing:.01em;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    transition:transform .12s ease, box-shadow .2s ease;
+    box-shadow:0 6px 24px -8px rgba(176,107,255,.5);
+  }
+  .full-btn:hover{transform:translateY(-1px);box-shadow:0 10px 30px -8px rgba(176,107,255,.65)}
+  .full-btn:active{transform:translateY(0)}
+
+  .sections{display:grid;gap:10px}
+  .sec{
+    --c:var(--accent);
+    display:flex;align-items:center;gap:13px;
+    border:1px solid var(--line);background:rgba(255,255,255,.015);
+    border-radius:13px;padding:13px 14px;cursor:pointer;text-align:left;
+    color:var(--ink);transition:border-color .18s,background .18s,transform .1s;
+    position:relative;overflow:hidden;
+  }
+  .sec:hover{border-color:color-mix(in srgb,var(--c) 55%,var(--line));background:rgba(255,255,255,.03)}
+  .sec:active{transform:scale(.99)}
+  .sec.active{
+    border-color:var(--c);
+    background:linear-gradient(100deg,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent);
+  }
+  .sec .dot{
+    width:14px;height:14px;border-radius:50%;flex:none;
+    background:var(--c);box-shadow:0 0 12px color-mix(in srgb,var(--c) 80%,transparent);
+  }
+  .sec .meta{flex:1;min-width:0}
+  .sec .name{font-weight:700;font-size:15px;letter-spacing:-.005em}
+  .sec .time{font-size:12px;color:var(--ink-dim);font-variant-numeric:tabular-nums;margin-top:1px}
+  .sec .num{font-family:"Georgia",serif;font-size:15px;color:var(--ink-faint);font-style:italic}
+
+  /* ===== STAGE / LYRICS ===== */
+  .stage{
+    min-height:clamp(360px,52vh,560px);
+    display:flex;flex-direction:column;
+  }
+  .nowtag{
+    display:inline-flex;align-self:flex-start;align-items:center;gap:8px;
+    font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-dim);margin-bottom:14px;
+  }
+  .nowtag b{color:var(--accent);font-weight:700;letter-spacing:.04em}
+
+  .lyrics{
+    flex:1;overflow-y:auto;scroll-behavior:smooth;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);
+    mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);
+    padding:40px 4px;
+  }
+  .lyrics::-webkit-scrollbar{width:0}
+  .lrow{
+    font-family:"Georgia",serif;
+    font-size:clamp(19px,2.5vw,26px);line-height:1.32;
+    padding:7px 6px;color:var(--ink-faint);
+    transition:color .25s ease, transform .25s ease, opacity .25s ease, filter .25s;
+    opacity:.5;filter:blur(.3px);
+    cursor:default;border-radius:8px;
+  }
+  .lrow.past{color:var(--ink-dim);opacity:.6;filter:none}
+  .lrow.cur{
+    color:#fff;opacity:1;filter:none;font-weight:600;
+    transform:translateX(4px);
+    text-shadow:0 0 22px color-mix(in srgb,var(--accent) 60%,transparent);
+  }
+  .lrow.cur::before{
+    content:"";position:absolute;left:-2px;width:3px;height:1.1em;
+    margin-top:.16em;border-radius:3px;background:var(--accent);
+    box-shadow:0 0 12px var(--accent);
+  }
+  .lrow{position:relative}
+  .lrow.next{color:var(--ink-dim);opacity:.8}
+  .lrow.heading{
+    font-size:13px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent);opacity:.9;font-family:"Inter",sans-serif;font-weight:700;
+    margin-top:18px;padding-bottom:2px;filter:none;
+  }
+  .lrow.heading:first-child{margin-top:0}
+
+  /* ===== TRANSPORT (fixed bottom) ===== */
+  .transport{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    background:linear-gradient(180deg,rgba(10,7,18,.4),rgba(10,7,18,.96) 38%);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+    padding:12px clamp(14px,3vw,30px) calc(12px + env(safe-area-inset-bottom));
+  }
+  .t-inner{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+
+  .scrub{display:flex;align-items:center;gap:12px}
+  .time{font-variant-numeric:tabular-nums;font-size:12px;color:var(--ink-dim);min-width:42px}
+  .time.r{text-align:right}
+  .bar{
+    flex:1;height:7px;border-radius:6px;position:relative;cursor:pointer;
+    background:var(--line);overflow:hidden;
+  }
+  .bar .seg{position:absolute;top:0;bottom:0;opacity:.32}
+  .bar .fill{position:absolute;top:0;bottom:0;left:0;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);border-radius:6px}
+  .bar .head{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+    background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 8px var(--accent);pointer-events:none}
+
+  .ctrls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+  .play{
+    width:54px;height:54px;flex:none;border-radius:50%;border:none;cursor:pointer;
+    background:var(--accent);color:#160c22;
+    display:grid;place-items:center;transition:transform .12s,box-shadow .2s;
+    box-shadow:0 6px 22px -6px var(--accent);
+  }
+  .play:hover{transform:scale(1.05)}
+  .play:active{transform:scale(.96)}
+  .play svg{width:24px;height:24px;fill:currentColor}
+
+  .ic{
+    width:44px;height:44px;flex:none;border-radius:12px;cursor:pointer;
+    border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink);
+    display:grid;place-items:center;transition:border-color .15s,background .15s}
+  .ic:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .speeds{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  .spd{
+    border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink-dim);
+    border-radius:10px;padding:8px 11px;font-size:13px;font-weight:700;cursor:pointer;
+    font-variant-numeric:tabular-nums;transition:all .14s;min-width:46px;
+  }
+  .spd:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+  .spd.on{background:var(--accent);color:#160c22;border-color:var(--accent);box-shadow:0 0 14px -4px var(--accent)}
+  .spd .x{font-size:10px;opacity:.7}
+
+  .speed-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);align-self:center;margin-right:2px}
+
+  /* desktop transport: one row */
+  @media(min-width:760px){
+    .t-inner{flex-direction:row;align-items:center;gap:20px}
+    .scrub{flex:1;order:2}
+    .ctrls{order:1;flex-wrap:nowrap}
+    .speeds{order:3}
+  }
+
+  .hint{color:var(--ink-faint);font-size:12px;line-height:1.5;margin-top:14px}
+  .hint kbd{
+    font-family:inherit;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:5px;padding:1px 6px;font-size:11px;color:var(--ink-dim)
+  }
+  @media(max-width:759px){.hint{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">Spellbook</div>
+      <div class="sub">Lyric trainer · four spells, one mix</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: section selector -->
+    <div>
+      <div class="panel">
+        <div class="sec-label">Play</div>
+        <button class="full-btn" id="fullBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Full mix · top to bottom
+        </button>
+        <div class="sec-label">Or learn one spell</div>
+        <div class="sections" id="sectionList"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: lyric stage -->
+    <div class="panel stage">
+      <div class="nowtag">Now playing · <b id="nowName">—</b></div>
+      <div class="lyrics" id="lyrics"></div>
+      <div class="hint">
+        <kbd>Space</kbd> play / pause &nbsp;·&nbsp; <kbd>←</kbd> <kbd>→</kbd> skip 5s &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> speed
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSPORT -->
+<div class="transport">
+  <div class="t-inner">
+    <div class="ctrls">
+      <button class="ic" id="back" title="Back 5s"><svg viewBox="0 0 24 24"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg></button>
+      <button class="play" id="play" title="Play / pause">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="ic" id="fwd" title="Forward 5s"><svg viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></button>
+    </div>
+
+    <div class="scrub">
+      <span class="time" id="cur">0:00</span>
+      <div class="bar" id="bar"><div class="fill" id="fill"></div><div class="head" id="head"></div></div>
+      <span class="time r" id="dur">0:00</span>
+    </div>
+
+    <div class="speeds">
+      <span class="speed-label">Speed</span>
+      <button class="spd on" data-s="1">1<span class="x">×</span></button>
+      <button class="spd" data-s="1.25">1.25<span class="x">×</span></button>
+      <button class="spd" data-s="1.5">1.5<span class="x">×</span></button>
+      <button class="spd" data-s="1.75">1.75<span class="x">×</span></button>
+      <button class="spd" data-s="2">2<span class="x">×</span></button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" src="Music_Fest_Mix.m4a" preload="auto"></audio>
+
+<script>
+/* ============================================================
+   TIMINGS — the synced lyric data.
+   These are best-effort estimates. Use the trainer, then once
+   you've nailed the real timings you can replace the numbers
+   below and re-host. Each line = [seconds, "lyric text"].
+   A line whose text starts with "§" is a section heading.
+   ============================================================ */
+
+const SONG_DURATION = 242.35;
+
+const SECTIONS = [
+  {
+    id:"abracadabra", name:"Abracadabra", color:"var(--c-abra)",
+    start:0.0, end:60.0,
+    lines:[
+      [0.0,  "§ Abracadabra"],
+      [1.5,  "Abra-ca-dabra"],
+      [3.5,  "Abracadabra"],
+      [5.5,  "Abra-ca-dabra"],
+      [7.5,  "Abracadabra"],
+      [10.0, "Pay the toll to the angels"],
+      [13.0, "Drawing circles in the clouds"],
+      [16.0, "Keep your mind on the distance"],
+      [19.0, "When the devil turns around"],
+      [22.5, "Hold me in your heart tonight"],
+      [25.5, "In the magic of the dark moonlight"],
+      [28.5, "Save me from this empty fight"],
+      [31.5, "In the game of life"],
+      [34.5, "Like a poem said by a lady in red"],
+      [38.0, "You hear the last few words of your life"],
+      [41.5, "With a haunting dance, now you're both in a trance"],
+      [45.0, "It's time to cast your spell on the night"],
+      [48.5, "Abracadabra, amor oo na na"],
+      [51.5, "Abra ca da bra, morta oo gaga"],
+      [54.5, "Abracadabra, abra oo na na"],
+      [57.5, "In her tongue she said: death or love tonight"],
+    ]
+  },
+  {
+    id:"disturbia", name:"Disturbia", color:"var(--c-dist)",
+    start:60.0, end:133.0,
+    lines:[
+      [60.0,  "§ Disturbia"],
+      [61.5,  "Bum bum be-dum, bum bum be-dum bum"],
+      [65.0,  "Bum bum be-dum, bum bum be-dum bum"],
+      [68.5,  "Bum bum be-dum, bum bum be-dum bum"],
+      [72.0,  "(I'm going crazy now)"],
+      [75.0,  "No more gas, in the red (can't even get it started)"],
+      [79.0,  "Nothing heard, nothing said (can't even speak about it)"],
+      [83.0,  "All my life on my head (don't want to think about it)"],
+      [87.0,  "Feels like I'm going insane, yeah"],
+      [91.0,  "It's a thief in the night to come and grab you (ah-ah)"],
+      [95.0,  "It can creep up inside you and consume you (ah-ah)"],
+      [99.0,  "A disease of the mind, it can control you (ah-ah)"],
+      [103.0, "It's too close for comfort, oh"],
+      [107.0, "Put on your brake lights, you're in the city of wonder"],
+      [111.0, "Ain't gon' play nice, watch out you might just go under"],
+      [115.0, "Better think twice, your train of thought will be altered"],
+      [119.0, "So if you must falter, be wise"],
+      [122.5, "Your mind's in disturbia, it's like the darkness is light"],
+      [126.0, "Disturbia, am I scaring you tonight?"],
+      [129.5, "Disturbia, ain't used to what you like — disturbia"],
+    ]
+  },
+  {
+    id:"blackmagic", name:"Black Magic", color:"var(--c-black)",
+    start:133.0, end:177.0,
+    lines:[
+      [133.0, "§ Black Magic"],
+      [134.5, "Get your boy on his knees and repeat after me, say"],
+      [139.0, "Take a sip from my secret potion"],
+      [142.0, "I'll make you fall in love"],
+      [145.0, "For a spell that can't be broken, one drop should be enough"],
+      [149.0, "Boy, you belong to me, I got the recipe"],
+      [153.0, "And it's called black magic"],
+      [157.0, "Take a sip from my secret potion, one taste and you'll be mine"],
+      [161.5, "It's a spell that can't be broken, it'll keep you up all night"],
+      [166.0, "Boy, you belong to me, I got the recipe"],
+      [170.0, "And it's called black magic"],
+      [174.0, "(And it's called black magic)"],
+    ]
+  },
+  {
+    id:"darkhorse", name:"Dark Horse", color:"var(--c-dark)",
+    start:177.0, end:242.35,
+    lines:[
+      [177.0, "§ Dark Horse"],
+      [179.0, "So you wanna play with magic?"],
+      [183.0, "Boy, you should know what you're fallin' for"],
+      [188.0, "Baby, do you dare to do this?"],
+      [192.0, "'Cause I'm comin' at you like a dark horse (hey)"],
+      [198.0, "Are you ready for, ready for (hey)"],
+      [203.0, "A perfect storm, perfect storm? (Hey, hey)"],
+      [209.0, "'Cause once you're mine, once you're mine"],
+      [215.0, "(Hey, hey, hey, hey)"],
+      [220.0, "(There's no goin' back)"],
+    ]
+  }
+];
+
+/* ====================== ENGINE ====================== */
+const audio = document.getElementById('audio');
+const lyricsEl = document.getElementById('lyrics');
+const root = document.documentElement;
+
+let activeSection = null;   // null = full mix
+let allRows = [];           // flat [{t,text,heading,el,secIdx}]
+let curIdx = -1;
+
+const fmt = s => {
+  s = Math.max(0, s||0);
+  const m = Math.floor(s/60), ss = Math.floor(s%60);
+  return m+":"+String(ss).padStart(2,'0');
+};
+
+/* build the section selector */
+const listEl = document.getElementById('sectionList');
+SECTIONS.forEach((s,i)=>{
+  const b = document.createElement('button');
+  b.className='sec'; b.style.setProperty('--c', s.color); b.dataset.i=i;
+  b.innerHTML = `
+    <span class="dot"></span>
+    <span class="meta">
+      <span class="name">${s.name}</span>
+      <span class="time">${fmt(s.start)} – ${fmt(s.end)} · ${Math.round(s.end-s.start)}s</span>
+    </span>
+    <span class="num">${String(i+1).padStart(2,'0')}</span>`;
+  b.addEventListener('click',()=>playSection(i));
+  listEl.appendChild(b);
+});
+
+/* build the colour segments on the scrub bar */
+const bar = document.getElementById('bar');
+SECTIONS.forEach(s=>{
+  const seg = document.createElement('div');
+  seg.className='seg';
+  seg.style.left = (s.start/SONG_DURATION*100)+'%';
+  seg.style.width = ((s.end-s.start)/SONG_DURATION*100)+'%';
+  seg.style.background = s.color;
+  bar.insertBefore(seg, bar.firstChild);
+});
+
+/* render lyrics — either one section or the whole mix */
+function renderLyrics(){
+  lyricsEl.innerHTML='';
+  allRows=[];
+  const secs = activeSection===null ? SECTIONS : [SECTIONS[activeSection]];
+  secs.forEach((s)=>{
+    const secIdx = SECTIONS.indexOf(s);
+    s.lines.forEach(([t,text])=>{
+      const row=document.createElement('div');
+      const heading = text.startsWith('§');
+      row.className='lrow'+(heading?' heading':'');
+      row.textContent = heading ? text.slice(1).trim() : text;
+      lyricsEl.appendChild(row);
+      allRows.push({t, text, heading, el:row, secIdx});
+    });
+  });
+  curIdx=-1;
+}
+
+/* which lyric line is current for a given time */
+function lineAt(time){
+  let idx=-1;
+  for(let i=0;i<allRows.length;i++){
+    if(allRows[i].t <= time+0.01) idx=i; else break;
+  }
+  return idx;
+}
+
+function setAccentForTime(time){
+  let s = SECTIONS.find(x=>time>=x.start && time<x.end) || SECTIONS[0];
+  root.style.setProperty('--accent', s.color);
+  root.style.setProperty('--accent-soft','color-mix(in srgb,'+s.color+' 16%,transparent)');
+  document.getElementById('nowName').textContent = s.name;
+  // highlight active section card
+  document.querySelectorAll('.sec').forEach((el,i)=>{
+    el.classList.toggle('active', i===SECTIONS.indexOf(s));
+  });
+}
+
+function highlight(time){
+  const idx=lineAt(time);
+  if(idx!==curIdx){
+    allRows.forEach((r,i)=>{
+      r.el.classList.remove('cur','past','next');
+      if(i<idx) r.el.classList.add('past');
+      else if(i===idx) r.el.classList.add('cur');
+      else if(i===idx+1) r.el.classList.add('next');
+    });
+    const cur = allRows[idx];
+    if(cur && !cur.heading){
+      const r=cur.el.offsetTop - lyricsEl.clientHeight/2 + cur.el.offsetHeight/2;
+      lyricsEl.scrollTo({top:r, behavior:'smooth'});
+    } else if(cur){
+      lyricsEl.scrollTo({top:cur.el.offsetTop - 60, behavior:'smooth'});
+    }
+    curIdx=idx;
+  }
+}
+
+/* ---- transport ---- */
+const playBtn=document.getElementById('play');
+const playIcon=document.getElementById('playIcon');
+const fullBtn=document.getElementById('fullBtn');
+
+const PLAY_PATH="M8 5v14l11-7z";
+const PAUSE_PATH="M6 5h4v14H6zm8 0h4v14h-4z";
+function setPlayIcon(playing){ playIcon.setAttribute('d', playing?PAUSE_PATH:PLAY_PATH); }
+
+function playFull(){
+  activeSection=null;
+  renderLyrics();
+  audio.play();
+}
+function playSection(i){
+  activeSection=i;
+  renderLyrics();
+  const s=SECTIONS[i];
+  if(audio.currentTime < s.start || audio.currentTime >= s.end){
+    audio.currentTime = s.start;
+  }
+  setAccentForTime(audio.currentTime);
+  audio.play();
+}
+
+fullBtn.addEventListener('click',playFull);
+playBtn.addEventListener('click',()=> audio.paused ? audio.play() : audio.pause());
+document.getElementById('back').addEventListener('click',()=> audio.currentTime=Math.max(0,audio.currentTime-5));
+document.getElementById('fwd').addEventListener('click',()=> audio.currentTime=Math.min(SONG_DURATION,audio.currentTime+5));
+
+audio.addEventListener('play',()=>setPlayIcon(true));
+audio.addEventListener('pause',()=>setPlayIcon(false));
+
+/* keep a section from bleeding into the next when learning one spell */
+audio.addEventListener('timeupdate',()=>{
+  const t=audio.currentTime;
+  document.getElementById('cur').textContent=fmt(t);
+  document.getElementById('fill').style.width=(t/SONG_DURATION*100)+'%';
+  document.getElementById('head').style.left=(t/SONG_DURATION*100)+'%';
+  setAccentForTime(t);
+  highlight(t);
+  if(activeSection!==null){
+    const s=SECTIONS[activeSection];
+    if(t>=s.end){ audio.pause(); audio.currentTime=s.end-0.05; }
+  }
+});
+
+audio.addEventListener('loadedmetadata',()=>{
+  document.getElementById('dur').textContent=fmt(SONG_DURATION);
+});
+
+/* scrub */
+let scrubbing=false;
+function scrubTo(clientX){
+  const r=bar.getBoundingClientRect();
+  const p=Math.min(1,Math.max(0,(clientX-r.left)/r.width));
+  audio.currentTime=p*SONG_DURATION;
+}
+bar.addEventListener('pointerdown',e=>{scrubbing=true;bar.setPointerCapture(e.pointerId);scrubTo(e.clientX)});
+bar.addEventListener('pointermove',e=>{if(scrubbing)scrubTo(e.clientX)});
+bar.addEventListener('pointerup',()=>scrubbing=false);
+
+/* speed */
+const speeds=document.querySelectorAll('.spd');
+function setSpeed(v){
+  audio.playbackRate=parseFloat(v);
+  if('preservesPitch' in audio) audio.preservesPitch=true;
+  audio.mozPreservesPitch=true; audio.webkitPreservesPitch=true;
+  speeds.forEach(b=>b.classList.toggle('on', b.dataset.s===String(v)));
+}
+speeds.forEach(b=>b.addEventListener('click',()=>setSpeed(b.dataset.s)));
+
+/* keyboard */
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(e.code==='Space'){e.preventDefault(); audio.paused?audio.play():audio.pause();}
+  else if(e.code==='ArrowLeft') audio.currentTime=Math.max(0,audio.currentTime-5);
+  else if(e.code==='ArrowRight') audio.currentTime=Math.min(SONG_DURATION,audio.currentTime+5);
+  else if(['1','2','3','4','5'].includes(e.key)){
+    const map={'1':'1','2':'1.25','3':'1.5','4':'1.75','5':'2'};
+    setSpeed(map[e.key]);
+  }
+});
+
+/* init */
+renderLyrics();
+setAccentForTime(0);
+setPlayIcon(false);
+</script>
+</body>
+</html>
